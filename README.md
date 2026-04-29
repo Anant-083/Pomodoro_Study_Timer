@@ -62,11 +62,13 @@ All sounds are **generated in real-time** using the Web Audio API — no audio f
 ---
 
 ## 🚀 How to Use
+```
 1.Open the app
 2.Tap Start → your seed is planted 🌱
 3.Study for 25 minutes → tree fully grows 🌲
 4.Session complete → tree joins your forest
 5.Take a 5 min break → then go again
+```
 
 ---
 
