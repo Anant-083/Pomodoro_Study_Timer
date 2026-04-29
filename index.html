@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pomodoro Timer</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lato:wght@300;400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #1a2e1a;
+  --bg2: #162414;
+  --card: rgba(30,52,28,0.88);
+  --accent: #7ec87e;
+  --accent2: #a8e6a8;
+  --text: #d4edda;
+  --text2: #8fb98f;
+  --muted: #4a7a4a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  background: var(--bg);
+  font-family: 'Lato', sans-serif;
+  color: var(--text);
+  overflow-x: hidden;
+  transition: background 2s ease;
+}
+
+body.day {
+  --bg: #2d4a2d;
+  --bg2: #1e3a1e;
+  --card: rgba(45,74,45,0.88);
+}
+
+body.night {
+  --bg: #0d1f0d;
+  --bg2: #091409;
+  --card: rgba(15,30,15,0.92);
+}
+
+#rainCanvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 16px 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.header { text-align: center; padding-top: 10px; }
+
+.header h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  color: var(--accent2);
+  letter-spacing: 1px;
+}
+
+.header p {
+  font-size: 0.78rem;
+  color: var(--text2);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.stats {
+  display: flex;
+  gap: 20px;
+  background: var(--card);
+  border: 1px solid var(--muted);
+  border-radius: 14px;
+  padding: 12px 24px;
+  width: 100%;
+  justify-content: center;
+}
+
+.stat { text-align: center; }
+
+.stat-val {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.4rem;
+  color: var(--accent);
+}
+
+.stat-label {
+  font-size: 0.68rem;
+  color: var(--text2);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.timer-card {
+  background: var(--card);
+  border: 1px solid var(--muted);
+  border-radius: 24px;
+  padding: 32px 24px 28px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  backdrop-filter: blur(8px);
+}
+
+.mode-label {
+  font-size: 0.72rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+
+.ring-wrap {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.ring-wrap svg {
+  transform: rotate(-90deg);
+  width: 200px;
+  height: 200px;
+}
+
+.ring-bg {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 6;
+  opacity: 0.3;
+}
+
+.ring-progress {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 565;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1s linear, stroke 0.5s;
+}
+
+.ring-progress.break { stroke: #74b8d4; }
+
+.timer-display {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.timer-time {
+  font-family: 'Playfair Display', serif;
+  font-size: 3rem;
+  color: var(--text);
+  line-height: 1;
+}
+
+.timer-sub {
+  font-size: 0.68rem;
+  color: var(--text2);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.btn-row { display: flex; gap: 12px; }
+
+.btn {
+  padding: 10px 28px;
+  border-radius: 50px;
+  border: none;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+}
+
+.btn-start {
+  background: var(--accent);
+  color: #0d1f0d;
+  font-weight: 700;
+}
+
+.btn-start:hover { background: var(--accent2); transform: scale(1.04); }
+
+.btn-dismiss {
+  background: transparent;
+  border: 1px solid var(--muted);
+  color: var(--text2);
+}
+
+.btn-dismiss:hover { border-color: #c0392b; color: #e74c3c; }
+
+.tree-section {
+  background: var(--card);
+  border: 1px solid var(--muted);
+  border-radius: 20px;
+  padding: 20px 24px;
+  width: 100%;
+  text-align: center;
+}
+
+.tree-label {
+  font-size: 0.68rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin-bottom: 10px;
+}
+
+.tree-display {
+  font-size: 5rem;
+  line-height: 1;
+  transition: all 0.6s ease;
+  display: inline-block;
+}
+
+.tree-display.wither { animation: wither 1s ease forwards; }
+.tree-display.grow { animation: grow 0.5s ease; }
+
+@keyframes wither {
+  0% { transform: scale(1); opacity: 1; filter: none; }
+  50% { transform: scale(0.8); filter: grayscale(1) sepia(1); }
+  100% { transform: scale(0.6); opacity: 0.3; filter: grayscale(1) sepia(1) brightness(0.5); }
+}
+
+@keyframes grow {
+  0% { transform: scale(0.7); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.tree-stage-text {
+  font-size: 0.72rem;
+  color: var(--text2);
+  margin-top: 6px;
+  letter-spacing: 1px;
+}
+
+.sound-section {
+  background: var(--card);
+  border: 1px solid var(--muted);
+  border-radius: 20px;
+  padding: 16px 20px;
+  width: 100%;
+}
+
+.sound-label {
+  font-size: 0.68rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.sound-options {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.sound-btn {
+  background: transparent;
+  border: 1px solid var(--muted);
+  border-radius: 12px;
+  padding: 8px 4px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+  color: var(--text2);
+  font-size: 0.6rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.sound-btn span.icon { font-size: 1.3rem; }
+.sound-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.sound-btn.active {
+  background: rgba(126,200,126,0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.volume-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.volume-row label {
+  font-size: 0.68rem;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+input[type=range] {
+  flex: 1;
+  accent-color: var(--accent);
+  height: 4px;
+}
+
+.forest-section {
+  background: var(--card);
+  border: 1px solid var(--muted);
+  border-radius: 20px;
+  padding: 16px 20px;
+  width: 100%;
+}
+
+.forest-label {
+  font-size: 0.68rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.forest-trees {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  min-height: 40px;
+}
+
+.forest-tree {
+  font-size: 1.8rem;
+  animation: popIn 0.4s ease;
+}
+
+@keyframes popIn {
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.forest-empty {
+  font-size: 0.75rem;
+  color: var(--muted);
+  align-self: center;
+  font-style: italic;
+}
+
+.quote-box { text-align: center; padding: 0 8px; }
+
+.quote-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.88rem;
+  color: var(--text2);
+  font-style: italic;
+  line-height: 1.5;
+}
+</style>
+</head>
+<body>
+
+<canvas id="rainCanvas"></canvas>
+
+<div class="container">
+
+  <div class="header">
+    <h1>🌿 Pomodoro</h1>
+    <p>Focus. Grow. Rest.</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-val" id="sessionsVal">0</div>
+      <div class="stat-label">Today</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="streakVal">0</div>
+      <div class="stat-label">Streak 🔥</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="totalVal">0</div>
+      <div class="stat-label">Total</div>
+    </div>
+  </div>
+
+  <div class="timer-card">
+    <div class="mode-label" id="modeLabel">FOCUS SESSION</div>
+    <div class="ring-wrap">
+      <svg viewBox="0 0 200 200">
+        <circle class="ring-bg" cx="100" cy="100" r="90"/>
+        <circle class="ring-progress" id="ringProgress" cx="100" cy="100" r="90"/>
+      </svg>
+      <div class="timer-display">
+        <div class="timer-time" id="timerDisplay">25:00</div>
+        <div class="timer-sub" id="timerSub">ready</div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-start" id="startBtn" onclick="toggleTimer()">Start</button>
+      <button class="btn btn-dismiss" onclick="dismissTimer()">Dismiss</button>
+    </div>
+  </div>
+
+  <div class="tree-section">
+    <div class="tree-label">Your Tree</div>
+    <div class="tree-display" id="treeDisplay">🌱</div>
+    <div class="tree-stage-text" id="treeStageText">Plant your seed — start the timer</div>
+  </div>
+
+  <div class="sound-section">
+    <div class="sound-label">Ambiance</div>
+    <div class="sound-options">
+      <button class="sound-btn active" id="snd-rain" onclick="selectSound('rain')">
+        <span class="icon">🌧️</span>Rain
+      </button>
+      <button class="sound-btn" id="snd-ocean" onclick="selectSound('ocean')">
+        <span class="icon">🌊</span>Ocean
+      </button>
+      <button class="sound-btn" id="snd-wind" onclick="selectSound('wind')">
+        <span class="icon">🌬️</span>Wind
+      </button>
+      <button class="sound-btn" id="snd-study" onclick="selectSound('study')">
+        <span class="icon">🎵</span>Study
+      </button>
+      <button class="sound-btn" id="snd-none" onclick="selectSound('none')">
+        <span class="icon">🔇</span>None
+      </button>
+    </div>
+    <div class="volume-row">
+      <label>Vol</label>
+      <input type="range" id="volSlider" min="0" max="100" value="50" oninput="setVolume(this.value)">
+    </div>
+  </div>
+
+  <div class="forest-section">
+    <div class="forest-label">Your Forest</div>
+    <div class="forest-trees" id="forestTrees">
+      <span class="forest-empty">Complete a session to grow your first tree 🌳</span>
+    </div>
+  </div>
+
+  <div class="quote-box">
+    <div class="quote-text" id="quoteText">"The secret of getting ahead is getting started."</div>
+  </div>
+
+</div>
+
+<script>
+const quotes = [
+  '"The secret of getting ahead is getting started."',
+  '"Focus on being productive instead of busy."',
+  '"Small steps every day lead to big results."',
+  '"A tree grows one ring at a time. So do you."',
+  '"Deep work is the superpower of the 21st century."',
+  '"Nature does not hurry, yet everything is accomplished."',
+  '"The best time to plant a tree was yesterday. The second best time is now."',
+  '"Concentrate all your thoughts upon the work at hand."',
+  '"Do not watch the clock. Do what it does. Keep going."',
+  '"Growth is never by mere chance."',
+];
+
+const treeStages = [
+  { emoji: '🌱', label: 'Seed planted' },
+  { emoji: '🪴', label: 'Sprouting...' },
+  { emoji: '🌿', label: 'Growing leaves' },
+  { emoji: '🌳', label: 'Almost there!' },
+  { emoji: '🌲', label: 'Fully grown! 🎉' },
+];
+
+let timerInterval = null;
+let isRunning = false;
+let isBreak = false;
+let totalSeconds = 25 * 60;
+let secondsLeft = totalSeconds;
+let currentStage = -1;
+let currentSound = 'rain';
+let volume = 0.5;
+let audioCtx = null;
+let soundNode = null;
+let soundGain = null;
+let studyInterval = null;
+let rainDropletTimeout = null;
+
+function getToday() { return new Date().toDateString(); }
+
+function loadStats() {
+  const today = getToday();
+  const data = JSON.parse(localStorage.getItem('pomodoro_stats') || '{}');
+  if (data.date !== today) { data.date = today; data.sessions = 0; }
+  data.total = data.total || 0;
+  data.streak = data.streak || 0;
+  data.lastDate = data.lastDate || null;
+  return data;
+}
+
+function saveStats(data) { localStorage.setItem('pomodoro_stats', JSON.stringify(data)); }
+function loadForest() { return JSON.parse(localStorage.getItem('pomodoro_forest') || '[]'); }
+function saveForest(f) { localStorage.setItem('pomodoro_forest', JSON.stringify(f)); }
+
+function updateStatsUI() {
+  const data = loadStats();
+  document.getElementById('sessionsVal').textContent = data.sessions;
+  document.getElementById('streakVal').textContent = data.streak;
+  document.getElementById('totalVal').textContent = data.total;
+}
+
+function renderForest() {
+  const forest = loadForest();
+  const el = document.getElementById('forestTrees');
+  if (forest.length === 0) {
+    el.innerHTML = '<span class="forest-empty">Complete a session to grow your first tree 🌳</span>';
+  } else {
+    el.innerHTML = forest.map(() => '<span class="forest-tree">🌲</span>').join('');
+  }
+}
+
+function toggleTimer() { isRunning ? pauseTimer() : startTimer(); }
+
+function startTimer() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  isRunning = true;
+  document.getElementById('startBtn').textContent = 'Pause';
+  document.getElementById('timerSub').textContent = isBreak ? 'break' : 'focusing';
+  playSound(currentSound);
+  timerInterval = setInterval(tick, 1000);
+}
+
+function pauseTimer() {
+  isRunning = false;
+  document.getElementById('startBtn').textContent = 'Resume';
+  document.getElementById('timerSub').textContent = 'paused';
+  stopSound();
+  clearInterval(timerInterval);
+}
+
+function tick() {
+  if (secondsLeft <= 0) {
+    clearInterval(timerInterval);
+    isRunning = false;
+    stopSound();
+    if (!isBreak) sessionComplete();
+    else breakComplete();
+    return;
+  }
+  secondsLeft--;
+  updateTimerDisplay();
+  updateRing();
+  if (!isBreak) updateTree();
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(secondsLeft / 60);
+  const s = secondsLeft % 60;
+  document.getElementById('timerDisplay').textContent =
+    String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+function updateRing() {
+  const progress = secondsLeft / totalSeconds;
+  const circumference = 2 * Math.PI * 90;
+  document.getElementById('ringProgress').style.strokeDashoffset = circumference * progress;
+}
+
+function updateTree() {
+  const elapsed = totalSeconds - secondsLeft;
+  const stageIndex = Math.min(Math.floor(elapsed / (totalSeconds / 5)), 4);
+  if (stageIndex !== currentStage) {
+    currentStage = stageIndex;
+    const tree = document.getElementById('treeDisplay');
+    tree.classList.remove('wither', 'grow');
+    void tree.offsetWidth;
+    tree.classList.add('grow');
+    tree.textContent = treeStages[stageIndex].emoji;
+    document.getElementById('treeStageText').textContent = treeStages[stageIndex].label;
+  }
+}
+
+function sessionComplete() {
+  playBell();
+  const data = loadStats();
+  data.sessions += 1;
+  data.total += 1;
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (data.lastDate === yesterday.toDateString()) data.streak += 1;
+  else if (data.lastDate !== getToday()) data.streak = 1;
+  data.lastDate = getToday();
+  saveStats(data);
+  updateStatsUI();
+  const forest = loadForest();
+  forest.push({ date: getToday() });
+  saveForest(forest);
+  renderForest();
+  document.getElementById('treeDisplay').textContent = '🌲';
+  document.getElementById('treeStageText').textContent = 'Session complete! 🎉 Break time...';
+  document.getElementById('modeLabel').textContent = 'BREAK TIME';
+  document.getElementById('ringProgress').classList.add('break');
+  document.getElementById('quoteText').textContent = quotes[Math.floor(Math.random() * quotes.length)];
+  setTimeout(() => {
+    isBreak = true;
+    totalSeconds = 5 * 60;
+    secondsLeft = totalSeconds;
+    document.getElementById('timerDisplay').textContent = '05:00';
+    document.getElementById('startBtn').textContent = 'Start Break';
+    document.getElementById('timerSub').textContent = 'break ready';
+    isRunning = false;
+  }, 2000);
+}
+
+function breakComplete() {
+  playBell();
+  isBreak = false;
+  resetToFocus();
+  document.getElementById('treeStageText').textContent = 'Ready for next session!';
+}
+
+function dismissTimer() {
+  clearInterval(timerInterval);
+  isRunning = false;
+  stopSound();
+  if (!isBreak && currentStage >= 0) {
+    const tree = document.getElementById('treeDisplay');
+    tree.classList.remove('grow');
+    void tree.offsetWidth;
+    tree.classList.add('wither');
+    setTimeout(() => resetToFocus(), 1100);
+  } else {
+    resetToFocus();
+  }
+}
+
+function resetToFocus() {
+  isBreak = false;
+  totalSeconds = 25 * 60;
+  secondsLeft = totalSeconds;
+  currentStage = -1;
+  document.getElementById('timerDisplay').textContent = '25:00';
+  document.getElementById('startBtn').textContent = 'Start';
+  document.getElementById('timerSub').textContent = 'ready';
+  document.getElementById('modeLabel').textContent = 'FOCUS SESSION';
+  document.getElementById('ringProgress').classList.remove('break');
+  document.getElementById('ringProgress').style.strokeDashoffset = 0;
+  const tree = document.getElementById('treeDisplay');
+  tree.classList.remove('wither', 'grow');
+  tree.textContent = '🌱';
+  document.getElementById('treeStageText').textContent = 'Plant your seed — start the timer';
+}
+
+// ─── AUDIO ────────────────────────────────────────────────
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function stopSound() {
+  if (soundNode) { try { soundNode.stop(); } catch(e){} soundNode = null; }
+  if (studyInterval) { clearInterval(studyInterval); studyInterval = null; }
+  if (rainDropletTimeout) { clearTimeout(rainDropletTimeout); rainDropletTimeout = null; }
+}
+
+function playSound(type) {
+  stopSound();
+  if (type === 'none') return;
+  const ctx = getAudioCtx();
+  soundGain = ctx.createGain();
+  soundGain.gain.value = volume;
+  soundGain.connect(ctx.destination);
+
+  // ── RAIN: gentle water droplets + soft background mist ──
+  if (type === 'rain') {
+    // Soft background mist (very quiet high-pass filtered noise)
+    const bufSize = ctx.sampleRate * 2;
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.06;
+    const bgNode = ctx.createBufferSource();
+    bgNode.buffer = buf;
+    bgNode.loop = true;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 2000;
+    bgNode.connect(filter);
+    filter.connect(soundGain);
+    bgNode.start();
+    soundNode = bgNode;
+
+    // Individual droplet scheduler
+    function scheduleDroplet() {
+      if (currentSound !== 'rain' || !isRunning) return;
+      const actx = getAudioCtx();
+      const osc = actx.createOscillator();
+      const g = actx.createGain();
+      osc.frequency.value = 800 + Math.random() * 1400;
+      osc.type = 'sine';
+      g.gain.setValueAtTime(0, actx.currentTime);
+      g.gain.linearRampToValueAtTime(volume * (0.04 + Math.random() * 0.1), actx.currentTime + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.15 + Math.random() * 0.18);
+      osc.connect(g);
+      g.connect(actx.destination);
+      osc.start(actx.currentTime);
+      osc.stop(actx.currentTime + 0.35);
+      rainDropletTimeout = setTimeout(scheduleDroplet, 80 + Math.random() * 280);
+    }
+    scheduleDroplet();
+  }
+
+  // ── OCEAN: long buffer with two slow overlapping wave cycles ──
+  else if (type === 'ocean') {
+    const bufSize = ctx.sampleRate * 12;
+    const buf = ctx.createBuffer(2, bufSize, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const data = buf.getChannelData(c);
+      for (let i = 0; i < bufSize; i++) {
+        const t = i / ctx.sampleRate;
+        const slow = Math.sin(t * 0.18 * Math.PI) * 0.5 + 0.5;
+        const mid  = Math.sin(t * 0.43 * Math.PI) * 0.3 + 0.7;
+        data[i] = (Math.random() * 2 - 1) * 0.22 * slow * mid;
+      }
+    }
+    soundNode = ctx.createBufferSource();
+    soundNode.buffer = buf;
+    soundNode.loop = true;
+    soundNode.loopStart = 2;
+    soundNode.loopEnd = 11;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 500;
+    const filter2 = ctx.createBiquadFilter();
+    filter2.type = 'highpass';
+    filter2.frequency.value = 80;
+    soundNode.connect(filter);
+    filter.connect(filter2);
+    filter2.connect(soundGain);
+    soundNode.start();
+  }
+
+  // ── WIND ──
+  else if (type === 'wind') {
+    const bufSize = ctx.sampleRate * 3;
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.25;
+    soundNode = ctx.createBufferSource();
+    soundNode.buffer = buf;
+    soundNode.loop = true;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 300;
+    soundNode.connect(filter);
+    filter.connect(soundGain);
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    lfo.frequency.value = 0.15;
+    lfoGain.gain.value = 150;
+    lfo.connect(lfoGain);
+    lfoGain.connect(filter.frequency);
+    lfo.start();
+    soundNode.start();
+  }
+
+  // ── STUDY TONES ──
+  else if (type === 'study') {
+    playStudyTone(ctx, soundGain);
+    studyInterval = setInterval(() => {
+      if (isRunning) playStudyTone(ctx, soundGain);
+    }, 4000);
+  }
+}
+
+const pentatonic = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
+
+function playStudyTone(ctx, gainNode) {
+  const freq = pentatonic[Math.floor(Math.random() * pentatonic.length)];
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  g.gain.setValueAtTime(0, ctx.currentTime);
+  g.gain.linearRampToValueAtTime(volume * 0.3, ctx.currentTime + 0.1);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.5);
+  osc.connect(g);
+  g.connect(ctx.destination);
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 2.5);
+  const osc2 = ctx.createOscillator();
+  const g2 = ctx.createGain();
+  osc2.type = 'sine';
+  osc2.frequency.value = freq + 7;
+  g2.gain.setValueAtTime(0, ctx.currentTime);
+  g2.gain.linearRampToValueAtTime(volume * 0.15, ctx.currentTime + 0.1);
+  g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.5);
+  osc2.connect(g2);
+  g2.connect(ctx.destination);
+  osc2.start(ctx.currentTime);
+  osc2.stop(ctx.currentTime + 2.5);
+}
+
+function playBell() {
+  const ctx = getAudioCtx();
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = 528;
+  g.gain.setValueAtTime(0.5, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 3);
+  osc.connect(g);
+  g.connect(ctx.destination);
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 3);
+}
+
+function selectSound(type) {
+  currentSound = type;
+  document.querySelectorAll('.sound-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('snd-' + type).classList.add('active');
+  if (isRunning) { stopSound(); playSound(type); }
+}
+
+function setVolume(val) {
+  volume = val / 100;
+  if (soundGain) soundGain.gain.value = volume;
+}
+
+// ─── RAIN CANVAS ──────────────────────────────────────────
+const canvas = document.getElementById('rainCanvas');
+const ctx2d = canvas.getContext('2d');
+let drops = [];
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+function initDrops() {
+  drops = [];
+  for (let i = 0; i < 120; i++) {
+    drops.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      len: Math.random() * 18 + 8,
+      speed: Math.random() * 4 + 3,
+      opacity: Math.random() * 0.4 + 0.1,
+    });
+  }
+}
+
+function drawRain() {
+  ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+  drops.forEach(d => {
+    ctx2d.beginPath();
+    ctx2d.moveTo(d.x, d.y);
+    ctx2d.lineTo(d.x - 1, d.y + d.len);
+    ctx2d.strokeStyle = `rgba(174,214,241,${d.opacity})`;
+    ctx2d.lineWidth = 1;
+    ctx2d.stroke();
+    d.y += d.speed;
+    if (d.y > canvas.height) { d.y = -d.len; d.x = Math.random() * canvas.width; }
+  });
+  requestAnimationFrame(drawRain);
+}
+
+// ─── DAY/NIGHT ────────────────────────────────────────────
+function applyDayNight() {
+  const h = new Date().getHours();
+  document.body.classList.remove('day', 'night');
+  document.body.classList.add(h >= 6 && h < 18 ? 'day' : 'night');
+}
+
+// ─── INIT ─────────────────────────────────────────────────
+window.addEventListener('resize', () => { resizeCanvas(); initDrops(); });
+resizeCanvas();
+initDrops();
+drawRain();
+applyDayNight();
+setInterval(applyDayNight, 60000);
+updateStatsUI();
+renderForest();
+document.getElementById('quoteText').textContent = quotes[Math.floor(Math.random() * quotes.length)];
+</script>
+</body>
+</html> 
